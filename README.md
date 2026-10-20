@@ -1,85 +1,108 @@
-# 💳 Expense Tracker (Personal Finance & Money IQ Clone)
+# 📱 Expense Tracker — Native Android App (Money IQ Style)
 
-Applicazione personale per il tracciamento delle spese, gestione del budget e cashflow, ispirata a **Money IQ** e integrata nell'ecosistema di **Leonardo Assistant**.
-
----
-
-## 🎯 Obiettivi & Visione
-
-- **Esperienza Money IQ:** Gestione rapida, fluida e senza frizione da mobile/desktop.
-- **Single Source of Truth Finanziaria:** Tutti i conti, carte e contanti tracciati con precisione.
-- **Ecosistema Leonardo & Pacioli:** Integrazione con l'assistente personale per inserimento spese in linguaggio naturale via Discord o webhook.
-- **Automazione Carte & Ricevute:** Ingestione automatica delle transazioni bancarie tramite notifiche push o email triage.
+Applicazione Android nativa all'avanguardia per la gestione delle finanze personali, budget e tracciamento spese, ispirata a [Money IQ](https://play.google.com/store/apps/details?id=org.pixelrush.moneyiq&hl=it&pli=1), con tracciamento automatico dei pagamenti con carta e modulo di consultazione statistica in sola lettura per **Leonardo Assistant**.
 
 ---
 
-## 🚀 Funzionalità Principali
+## 🛠️ Stack Tecnologico Android (Modern & Standard)
+
+- **Linguaggio:** Kotlin 2.0+
+- **UI Framework:** Jetpack Compose + Material 3 (100% dichiarativo)
+- **Architettura:** Clean Architecture + MVI/MVVM (Coroutines, Flow, StateFlow)
+- **Persistenza & Database:** Room Database (SQLite locale, reattivo con Flow, offline-first)
+- **Dependency Injection:** Hilt (Dagger)
+- **Build System:** Gradle con Kotlin DSL e Version Catalogs (`gradle/libs.versions.toml`)
+- **Target SDK:** Android 15 (API 35) / Min SDK: Android 8.0 (API 26)
+
+---
+
+## 🚀 Architettura delle Feature
 
 ### 1. 🏦 Gestione Multi-Conto (Accounts)
-- Supporto per molteplici tipologie di conto: Conto Corrente, Carta di Credito/Debito, Contanti, Risparmio/Investimenti, Crypto.
-- Selezione del conto sorgente per ogni spesa o destinazione per le entrate.
-- Supporto per **Giroconti** (trasferimenti tra conti con eventuale commissione).
-- Riconciliazione periodica del saldo reale.
+- Monitoraggio separato di conti multipli: *Conto Corrente*, *Carte di Debito / Credito* (es. Revolut, Hype), *Contanti*, *Fondo Risparmio*, *Investimenti*.
+- Selezione immediata del conto di addebito o accredito.
+- Calcolo automatico in tempo reale del saldo per singolo conto e del patrimonio complessivo.
+- Supporto a **Giroconti** (trasferimenti tra conti con conservazione della coerenza).
 
-### 2. 🏷️ Categorie & Sotto-Categorie
-- Struttura gerarchica a due livelli per Uscite ed Entrate.
-- Personalizzazione con icone, colori ed etichette (es. `Cibo > Spesa`, `Cibo > Ristorante`, `Sport > Palestra/Corsa`, `Università > Tasse/Libri`).
-- Tag opzionali e note per ricerca avanzata.
+### 2. 🏷️ Categorie & Sotto-categorie a Due Livelli
+- Separazione netta tra *Uscite* ed *Entrate*.
+- Gerarchia a 2 livelli (es. `Cibo & Spesa > Supermercato`, `Cibo & Spesa > Pranzo fuori`, `Sport > Palestra`).
+- Icone vettoriali e palette colori distintiva in pieno stile Money IQ.
 
-### 3. 📊 Budgeting Intelligente
-- Definizione budget mensili/periodici per categoria o budget globale.
-- Monitoraggio della spesa in tempo reale con soglie di alert (es. 80%, 100%).
-- Allineamento con il framework 50/30/20 di Edoardo (`02_Aree/Finanza_Personale/Asset_Allocation_e_Budget.md`).
+### 3. 🎯 Budgeting Mensile
+- Configurazione budget per categoria o macro-budget mensile.
+- Tracciamento della percentuale di utilizzo in tempo reale.
+- Alert preventivi automatici al superamento dell'80% e sforamento del 100%.
 
-### 4. 📜 Lista & Analisi Transazioni
-- Vista cronologica con filtri combinati (data, conto, categoria, tipo, importo).
-- Ricerca full-text rapida per esercente, note o tag.
-- Report statistici e grafici di ripartizione spese/entrate.
+### 4. 📜 Lista Transazioni & Ricerca
+- Feed cronologico ordinato per data e ora.
+- Filtri granulari per conto, tipologia e categoria.
+- Ricerca full-text istantanea per esercente, note o causale.
 
 ### 5. 💾 Backup & Ripristino
-- Snapshot automatici del database locale (SQLite).
-- Esportazione/Importazione in formato JSON e CSV.
-- Backup automatico archiviabile su cloud o sincronizzato con il Second Brain.
+- Snapshot SQLite e dump JSON/CSV archiviabili nello storage locale o su cloud drive.
+- Funzione di restore deterministica senza perdita di consistenza relazionale.
 
-### 6. 🤖 Integrazione Leonardo & Pacioli
-- **API REST & MCP Tool:** Integrazione con `leonardo-hub` / `E:\my-local-server`.
-- **Comandi Naturali su Discord:** Possibilità di scrivere `Leonardo ho speso 18€ da Conad con Hype` e vedere la spesa registrata istantaneamente con categoria e conto corretti.
-- **Query Vocali o da Chat:** Richieste del tipo "Quanto ho speso questo mese per il cibo?" o "A quanto ammonta il budget residuo?".
+### 6. 💳 Controllo Automatico Spese con Carta (Android Nativo)
+> [!IMPORTANT]
+> Non passa da server esterni o webhook: opera direttamente a livello di sistema operativo Android.
+- **Servizio:** `BankNotificationListenerService` (`android.service.notification.NotificationListenerService`).
+- **Funzionamento:** Intercetta in tempo reale le notifiche push delle app bancarie installate (Revolut, Hype, Intesa Sanpaolo, PostePay, BBVA, N26, ecc.).
+- **Parser Intelligente (`BankNotificationParser`):** Estrae automaticamente importo (es. `14,50 €`), esercente (es. `CONAD`) e associa la spesa alla carta bancaria corrispondente senza intervento manuale.
 
-### 7. 💳 Automazione Pagamenti Carta
-- **Webhook Endpoint:** Ricezione notifiche push da app bancarie (es. tramite Tasker / MacroDroid su Android) per intercettare pagamenti con carta in tempo reale.
-- **Email Parser (Leonardo Mail Watcher):** Intercettazione automatica ricevute e conferme pagamento inviate via email (già etichettate da `services/mail_watcher.py`).
-
----
-
-## 🛠️ Stack Tecnologico
-
-- **Core & Backend:** Python 3.14 + FastAPI / FastMCP (`uv` package manager).
-- **Database:** SQLite (WAL mode) con migrazioni leggere e backup deterministico.
-- **UI / Frontend:** Web UI reattiva / PWA mobile-first (ispirata al layout pulito di Money IQ).
-- **Integrazioni:** Discord Bot Webhook (`services/webhook_service.py`), MacroDroid Webhook, FastMCP Server.
+### 7. 🤖 Integrazione Leonardo (Strictly Read-Only)
+> [!NOTE]
+> Leonardo non scrive, non modifica e non cancella alcuna transazione.
+- **Modulo:** `LeonardoStatsExporter` (`service/leonardo/`).
+- **Funzione:** Esporta ed espone aggregati statistici ad uso esclusivo di consultazione:
+  - Totale entrate e uscite mensili.
+  - Ripartizione percentuale per categoria di spesa.
+  - Stato di avanzamento del budget.
+  - Leonardo può così rispondere a domande dell'utente ("Quanto ho speso questo mese?", "Qual è la categoria più onerosa?") leggendo lo snapshot senza alcun impatto sul database dell'app.
 
 ---
 
-## 📂 Struttura della Repository
+## 📂 Struttura del Progetto
 
 ```
 expense-tracker/
-├── src/
-│   ├── api/             # Endpoint FastAPI (conti, transazioni, budget, webhooks)
-│   ├── core/            # Configurazione, database SQLite, modelli dati
-│   ├── services/        # Logica di business: conti, budget, categorizzazione, backup
-│   ├── integrations/    # Connector per Leonardo, mail watcher, webhook pagamenti
-│   └── web/             # Frontend UI (PWA responsive)
-├── data/                # Database locale SQLite e directory backup
-├── pyproject.toml       # Dipendenze di progetto gestite con uv
-└── README.md
+├── app/
+│   ├── build.gradle.kts
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       └── java/com/edoardo/expensetracker/
+│           ├── ExpenseTrackerApp.kt
+│           ├── MainActivity.kt
+│           ├── data/
+│           │   ├── local/
+│           │   │   ├── ExpenseDatabase.kt
+│           │   │   ├── dao/
+│           │   │   │   ├── AccountDao.kt
+│           │   │   │   ├── CategoryDao.kt
+│           │   │   │   ├── TransactionDao.kt
+│           │   │   │   └── BudgetDao.kt
+│           │   │   └── entity/
+│           │   │       ├── AccountEntity.kt
+│           │   │       ├── CategoryEntity.kt
+│           │   │       ├── SubcategoryEntity.kt
+│           │   │       ├── TransactionEntity.kt
+│           │   │       └── BudgetEntity.kt
+│           │   └── repository/
+│           ├── service/
+│           │   ├── BankNotificationListenerService.kt   # Cattura automatica pagamenti carta
+│           │   ├── parser/
+│           │   │   └── BankNotificationParser.kt
+│           │   └── leonardo/
+│           │       └── LeonardoStatsExporter.kt        # Modulo READ-ONLY statistiche
+│           ├── ui/
+│           │   ├── navigation/Screen.kt
+│           │   ├── theme/
+│           │   └── screens/
+│           └── di/
+│               └── AppModule.kt
+├── gradle/
+│   └── libs.versions.toml
+├── build.gradle.kts
+├── settings.gradle.kts
+└── local.properties
 ```
-
----
-
-## 🔗 Collegamento con il Vault Obsidian
-
-- Progetto PARA: [[budget-tracker]] / [[expense-tracker]] in `01_Progetti/Programmazione/`
-- Area di Riferimento: [[Finanza_Personale]] e [[Asset_Allocation_e_Budget]]
-- Ecosistema Agenti: [[Leonardo Assistant]]
