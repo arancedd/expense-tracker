@@ -4,10 +4,12 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 enum class AccountType {
+    REGULAR,
+    SAVINGS,
+    DEBT,
     CHECKING,
     CREDIT_CARD,
     CASH,
-    SAVINGS,
     CRYPTO
 }
 
@@ -21,5 +23,6 @@ data class AccountEntity(
     val currency: String = "EUR",
     val colorHex: String = "#3B82F6",
     val iconName: String = "account_balance",
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val includeInTotalBalance: Boolean = true
 )

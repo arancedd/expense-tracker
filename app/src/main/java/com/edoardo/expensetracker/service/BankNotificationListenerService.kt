@@ -18,6 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+import java.util.Locale
+
 class BankNotificationListenerService : NotificationListenerService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -79,7 +81,7 @@ class BankNotificationListenerService : NotificationListenerService() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        val title = "💳 Spesa Registrata: -${String.format("%.2f", amount)} €"
+        val title = "💳 Spesa Registrata: -${String.format(Locale.ITALY, "%.2f", amount)} €"
         val content = "${payee ?: "Esercente sconosciuto"} su $accountName"
 
         val notification = NotificationCompat.Builder(this, channelId)

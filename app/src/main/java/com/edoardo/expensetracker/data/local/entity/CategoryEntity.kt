@@ -16,5 +16,6 @@ data class CategoryEntity(
     val name: String,
     val type: TransactionType,
     val colorHex: String = "#64748B",
-    val iconName: String = "category"
+    val iconName: String = "category",
+    val isArchived: Boolean = false
 )

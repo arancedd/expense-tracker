@@ -13,3 +13,7 @@ output.json
 
 # App-specific
 /app/build
+.kotlin/
+build_and_install.bat
+dump.xml
+*.log

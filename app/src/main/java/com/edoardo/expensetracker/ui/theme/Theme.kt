@@ -1,42 +1,40 @@
 package com.edoardo.expensetracker.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryBlue,
-    secondary = SecondaryBlue,
-    tertiary = TertiaryBlue,
+    primary = PrimaryMint,
+    secondary = PrimaryMintLight,
+    tertiary = AccentSky,
     background = BackgroundDark,
     surface = SurfaceDark,
-    onPrimary = Color.White,
+    surfaceVariant = SurfaceVariantDark,
+    surfaceContainer = SurfaceElevated,
+    surfaceContainerHigh = SurfaceElevated,
+    surfaceContainerHighest = SurfaceElevated,
+    surfaceContainerLow = SurfaceDark,
+    surfaceContainerLowest = BackgroundDark,
+    outline = SurfaceBorder,
+    outlineVariant = SurfaceBorder,
+    onPrimary = Color.Black,
     onSecondary = Color.White,
     onBackground = TextPrimary,
-    onSurface = TextPrimary
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = PrimaryBlue,
-    secondary = SecondaryBlue,
-    tertiary = TertiaryBlue,
-    background = Color(0xFFF8FAFC),
-    surface = Color.White,
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onBackground = Color(0xFF0F172A),
-    onSurface = Color(0xFF0F172A)
+    onSurface = TextPrimary,
+    onSurfaceVariant = TextSecondary,
+    error = ExpenseRed,
+    surfaceTint = Color.Transparent,
+    scrim = Color.Black
 )
 
 @Composable
 fun ExpenseTrackerTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true, // Default Modern Ivy Deep Neutral Dark (Zero Blue/Violet Tint)
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = DarkColorScheme,
         content = content
     )
 }

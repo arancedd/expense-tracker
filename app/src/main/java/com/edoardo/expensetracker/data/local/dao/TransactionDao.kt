@@ -70,8 +70,14 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity): Long
 
+    @Update
+    suspend fun updateTransaction(transaction: TransactionEntity)
+
     @Delete
     suspend fun deleteTransaction(transaction: TransactionEntity)
+
+    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
+    suspend fun getTransactionById(id: Long): TransactionEntity?
 
     // --- Query Statistiche per Leonardo & Dashboard ---
     @Query("""
@@ -89,7 +95,54 @@ interface TransactionDao {
         GROUP BY c.id
         ORDER BY totalAmount DESC
     """)
+    fun observeExpensesByCategoryBetween(fromMillis: Long, toMillis: Long): Flow<List<CategoryStat>>
+
+    @Query("""
+        SELECT 
+            c.id AS categoryId,
+            c.name AS categoryName,
+            c.colorHex AS colorHex,
+            SUM(t.amount) AS totalAmount,
+            COUNT(t.id) AS count
+        FROM transactions t
+        JOIN categories c ON t.categoryId = c.id
+        WHERE t.type = :type
+          AND t.dateMillis >= :fromMillis
+          AND t.dateMillis <= :toMillis
+        GROUP BY c.id
+        ORDER BY totalAmount DESC
+    """)
+    fun observeTransactionsByCategoryBetween(type: TransactionType, fromMillis: Long, toMillis: Long): Flow<List<CategoryStat>>
+
+    @Query("""
+        SELECT 
+            c.id AS categoryId,
+            c.name AS categoryName,
+            c.colorHex AS colorHex,
+            SUM(t.amount) AS totalAmount,
+            COUNT(t.id) AS count
+        FROM transactions t
+        JOIN categories c ON t.categoryId = c.id
+        WHERE t.type = 'EXPENSE'
+          AND t.dateMillis >= :fromMillis
+          AND t.dateMillis <= :toMillis
+        GROUP BY c.id
+        ORDER BY totalAmount DESC
+    """)
     suspend fun getExpensesByCategoryBetween(fromMillis: Long, toMillis: Long): List<CategoryStat>
+
+    @Query("""
+        SELECT 
+            COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END), 0.0) AS totalIncome,
+            COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END), 0.0) AS totalExpense,
+            (
+                COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END), 0.0)
+                - COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END), 0.0)
+            ) AS netCashflow
+        FROM transactions
+        WHERE dateMillis >= :fromMillis AND dateMillis <= :toMillis
+    """)
+    fun observeMonthlyOverview(fromMillis: Long, toMillis: Long): Flow<MonthlyOverview>
 
     @Query("""
         SELECT 

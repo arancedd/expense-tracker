@@ -3,52 +3,30 @@ package com.edoardo.expensetracker
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.edoardo.expensetracker.data.local.dao.AccountDao
-import com.edoardo.expensetracker.data.local.dao.AccountWithBalance
-import com.edoardo.expensetracker.data.local.dao.TransactionDao
-import com.edoardo.expensetracker.data.local.dao.TransactionDetail
 import com.edoardo.expensetracker.data.local.entity.TransactionType
+import com.edoardo.expensetracker.ui.components.FloatingGlassNavBar
 import com.edoardo.expensetracker.ui.navigation.Screen
-import com.edoardo.expensetracker.ui.theme.*
+import com.edoardo.expensetracker.ui.screens.accounts.AccountsScreen
+import com.edoardo.expensetracker.ui.screens.accounts.AccountsViewModel
+import com.edoardo.expensetracker.ui.screens.budgets.BudgetsScreen
+import com.edoardo.expensetracker.ui.screens.budgets.BudgetsViewModel
+import com.edoardo.expensetracker.ui.screens.dashboard.DashboardScreen
+import com.edoardo.expensetracker.ui.screens.dashboard.DashboardViewModel
+import com.edoardo.expensetracker.ui.screens.quickadd.OneMoneyAddExpenseSheet
+import com.edoardo.expensetracker.ui.screens.quickadd.QuickAddViewModel
+import com.edoardo.expensetracker.ui.screens.transactions.TransactionsScreen
+import com.edoardo.expensetracker.ui.screens.transactions.TransactionsViewModel
+import com.edoardo.expensetracker.ui.theme.ExpenseTrackerTheme
 import dagger.hilt.android.AndroidEntryPoint
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import java.text.SimpleDateFormat
-import java.util.*
-import javax.inject.Inject
-
-@HiltViewModel
-class MainViewModel @Inject constructor(
-    accountDao: AccountDao,
-    transactionDao: TransactionDao
-) : ViewModel() {
-
-    val accounts: StateFlow<List<AccountWithBalance>> = accountDao.observeAccountsWithBalance()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val recentTransactions: StateFlow<List<TransactionDetail>> = transactionDao.observeFilteredTransactions(limit = 50)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -62,51 +40,28 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppScreen(viewModel: MainViewModel = hiltViewModel()) {
+fun MainAppScreen() {
     var selectedScreen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
+    var isAddExpenseOpen by remember { mutableStateOf(false) }
+
+    val quickAddViewModel: QuickAddViewModel = hiltViewModel()
+    val dashboardViewModel: DashboardViewModel = hiltViewModel()
+    val accountsViewModel: AccountsViewModel = hiltViewModel()
+    val transactionsViewModel: TransactionsViewModel = hiltViewModel()
+    val budgetsViewModel: BudgetsViewModel = hiltViewModel()
+
     val screens = listOf(Screen.Dashboard, Screen.Accounts, Screen.Transactions, Screen.Budgets)
 
-    val accounts by viewModel.accounts.collectAsState()
-    val transactions by viewModel.recentTransactions.collectAsState()
-
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = selectedScreen.title,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
-                screens.forEach { screen ->
-                    NavigationBarItem(
-                        selected = selectedScreen == screen,
-                        onClick = { selectedScreen = screen },
-                        icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title) }
-                    )
+            FloatingGlassNavBar(
+                selectedScreen = selectedScreen,
+                screens = screens,
+                onScreenSelected = { screen ->
+                    selectedScreen = screen
                 }
-            }
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* Apri modal inserimento spesa/entrata/giroconto */ },
-                containerColor = PrimaryBlue,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Nuova Transazione")
-            }
+            )
         }
     ) { paddingValues ->
         Box(
@@ -115,188 +70,65 @@ fun MainAppScreen(viewModel: MainViewModel = hiltViewModel()) {
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            when (selectedScreen) {
-                Screen.Dashboard -> DashboardContent(accounts, transactions)
-                Screen.Accounts -> AccountsListContent(accounts)
-                Screen.Transactions -> TransactionsListContent(transactions)
-                Screen.Budgets -> BudgetsContent()
-            }
-        }
-    }
-}
-
-@Composable
-fun DashboardContent(accounts: List<AccountWithBalance>, transactions: List<TransactionDetail>) {
-    val totalBalance = accounts.sumOf { it.currentBalance }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = PrimaryBlue)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Patrimonio Totale", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "${String.format(Locale.ITALY, "%,.2f", totalBalance)} €",
-                        color = Color.White,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold
+            AnimatedContent(
+                targetState = selectedScreen,
+                transitionSpec = {
+                    val fromIndex = screens.indexOf(initialState)
+                    val toIndex = screens.indexOf(targetState)
+                    val direction = if (toIndex >= fromIndex) 1 else -1
+                    (slideInHorizontally(animationSpec = tween(220)) { width -> (width * 0.12f * direction).toInt() } + fadeIn(animationSpec = tween(220)))
+                        .togetherWith(slideOutHorizontally(animationSpec = tween(200)) { width -> -(width * 0.12f * direction).toInt() } + fadeOut(animationSpec = tween(180)))
+                },
+                label = "screen_content_transition"
+            ) { screen ->
+                when (screen) {
+                    Screen.Dashboard -> DashboardScreen(
+                        viewModel = dashboardViewModel,
+                        onCategoryClick = { categoryId, type ->
+                            quickAddViewModel.onTypeChange(type)
+                            quickAddViewModel.onCategorySelected(categoryId)
+                            isAddExpenseOpen = true
+                        },
+                        onAccountsClick = { selectedScreen = Screen.Accounts },
+                        onSettingsClick = { dashboardViewModel.toggleEditMode() }
+                    )
+                    Screen.Accounts -> AccountsScreen(
+                        viewModel = accountsViewModel,
+                        onRechargeAccount = { accountId ->
+                            quickAddViewModel.onTypeChange(TransactionType.INCOME)
+                            quickAddViewModel.onAccountSelected(accountId)
+                            isAddExpenseOpen = true
+                        },
+                        onWithdrawAccount = { accountId ->
+                            quickAddViewModel.onTypeChange(TransactionType.EXPENSE)
+                            quickAddViewModel.onAccountSelected(accountId)
+                            isAddExpenseOpen = true
+                        },
+                        onTransferAccount = { accountId ->
+                            quickAddViewModel.onTypeChange(TransactionType.TRANSFER)
+                            quickAddViewModel.onAccountSelected(accountId)
+                            isAddExpenseOpen = true
+                        }
+                    )
+                    Screen.Transactions -> TransactionsScreen(
+                        viewModel = transactionsViewModel,
+                        onTransactionClick = { txId ->
+                            quickAddViewModel.loadTransactionForEdit(txId)
+                            isAddExpenseOpen = true
+                        }
+                    )
+                    Screen.Budgets -> BudgetsScreen(
+                        viewModel = budgetsViewModel
                     )
                 }
             }
-        }
 
-        item {
-            Text("I Tuoi Conti", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        }
-
-        items(accounts) { accountWithBal ->
-            AccountRow(accountWithBal)
-        }
-
-        item {
-            Text("Ultime Transazioni", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        }
-
-        items(transactions.take(10)) { tx ->
-            TransactionRow(tx)
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(60.dp))
-        }
-    }
-}
-
-@Composable
-fun AccountsListContent(accounts: List<AccountWithBalance>) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(accounts) { acc ->
-            AccountRow(acc)
-        }
-    }
-}
-
-@Composable
-fun TransactionsListContent(transactions: List<TransactionDetail>) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        items(transactions) { tx ->
-            TransactionRow(tx)
-        }
-    }
-}
-
-@Composable
-fun BudgetsContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(Icons.Default.PieChart, contentDescription = null, modifier = Modifier.size(64.dp), tint = SecondaryBlue)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Modulo Budgeting Mensile", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "Configura tetti di spesa per categoria con alert automatici all'80% e 100%.",
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            fontSize = 14.sp
-        )
-    }
-}
-
-@Composable
-fun AccountRow(acc: AccountWithBalance) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(acc.account.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                Text(acc.account.accountType.name, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontSize = 12.sp)
-            }
-            Text(
-                "${String.format(Locale.ITALY, "%,.2f", acc.currentBalance)} €",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = if (acc.currentBalance >= 0) PrimaryBlue else ExpenseRed
-            )
-        }
-    }
-}
-
-@Composable
-fun TransactionRow(tx: TransactionDetail) {
-    val isExpense = tx.type == TransactionType.EXPENSE
-    val amountColor = when (tx.type) {
-        TransactionType.EXPENSE -> ExpenseRed
-        TransactionType.INCOME -> IncomeGreen
-        TransactionType.TRANSFER -> TransferPurple
-    }
-    val sign = if (isExpense) "-" else if (tx.type == TransactionType.INCOME) "+" else ""
-
-    val dateFormat = SimpleDateFormat("dd MMM, HH:mm", Locale.ITALY)
-    val dateStr = dateFormat.format(Date(tx.dateMillis))
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    tx.payee ?: tx.categoryName ?: "Transazione",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp
-                )
-                Text(
-                    "${tx.accountName} • $dateStr",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    fontSize = 12.sp
+            if (isAddExpenseOpen) {
+                OneMoneyAddExpenseSheet(
+                    viewModel = quickAddViewModel,
+                    onDismiss = { isAddExpenseOpen = false }
                 )
             }
-            Text(
-                "$sign${String.format(Locale.ITALY, "%.2f", tx.amount)} €",
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
-                color = amountColor
-            )
         }
     }
 }

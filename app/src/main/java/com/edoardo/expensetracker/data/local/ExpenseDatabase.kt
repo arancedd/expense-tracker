@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
         TransactionEntity::class,
         BudgetEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class ExpenseDatabase : RoomDatabase() {
@@ -40,23 +40,27 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     ExpenseDatabase::class.java,
                     "expense_tracker_db"
                 )
-                .addCallback(DatabaseCallback(scope))
+                .fallbackToDestructiveMigration()
                 .build()
+
                 INSTANCE = instance
+
+                // Garantisce che il seeding avvenga sempre se il DB è vuoto
+                scope.launch(Dispatchers.IO) {
+                    ensureDatabaseSeeded(instance)
+                }
+
                 instance
             }
         }
 
-        private class DatabaseCallback(
-            private val scope: CoroutineScope
-        ) : RoomDatabase.Callback() {
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                super.onCreate(db)
-                INSTANCE?.let { database ->
-                    scope.launch(Dispatchers.IO) {
-                        seedDatabase(database)
-                    }
-                }
+        suspend fun ensureDatabaseSeeded(database: ExpenseDatabase) {
+            val accountDao = database.accountDao()
+            val categoryDao = database.categoryDao()
+
+            val existingAccounts = accountDao.getActiveAccounts()
+            if (existingAccounts.isEmpty()) {
+                seedDatabase(database)
             }
         }
 
@@ -64,29 +68,37 @@ abstract class ExpenseDatabase : RoomDatabase() {
             val accountDao = database.accountDao()
             val categoryDao = database.categoryDao()
 
-            // Seed Conti Default (Checking, Carta Revolut/Hype, Contanti, Risparmio)
+            // Seed Conti Default (Revolut, Conto Principale, Cash, PayPal, Risparmio)
             accountDao.insertAccount(
-                AccountEntity(name = "Conto Principale", accountType = AccountType.CHECKING, colorHex = "#2563EB", iconName = "account_balance")
+                AccountEntity(name = "Revolut", accountType = AccountType.CREDIT_CARD, initialBalance = 239.63, colorHex = "#6366F1", iconName = "credit_card")
             )
             accountDao.insertAccount(
-                AccountEntity(name = "Carta Revolut", accountType = AccountType.CREDIT_CARD, colorHex = "#0EA5E9", iconName = "credit_card")
+                AccountEntity(name = "Conto Principale", accountType = AccountType.CHECKING, initialBalance = 1250.00, colorHex = "#2563EB", iconName = "account_balance")
             )
             accountDao.insertAccount(
-                AccountEntity(name = "Contanti", accountType = AccountType.CASH, colorHex = "#10B981", iconName = "payments")
+                AccountEntity(name = "Cash", accountType = AccountType.CASH, initialBalance = 12.20, colorHex = "#10B981", iconName = "payments")
             )
             accountDao.insertAccount(
-                AccountEntity(name = "Fondo Risparmio", accountType = AccountType.SAVINGS, colorHex = "#8B5CF6", iconName = "savings")
+                AccountEntity(name = "Paypal", accountType = AccountType.CHECKING, initialBalance = 0.00, colorHex = "#0EA5E9", iconName = "account_balance_wallet")
+            )
+            accountDao.insertAccount(
+                AccountEntity(name = "Fondo Risparmio", accountType = AccountType.SAVINGS, initialBalance = 220.77, colorHex = "#8B5CF6", iconName = "savings")
             )
 
             // Seed Categorie & Sottocategorie Uscite
             val expenseMap = mapOf(
                 "Cibo & Spesa" to Pair("#EF4444", listOf("Supermercato", "Pranzo fuori", "Ristorante/Cena", "Bar & Caffè")),
-                "Abitazione" to Pair("#F59E0B", listOf("Affitto", "Luce & Gas", "Internet/Wi-Fi", "Spese Condominiali")),
-                "Sport & Salute" to Pair("#10B981", listOf("Palestra", "Corsa & Scarpe", "Farmacia & Visite")),
-                "Trasporti" to Pair("#06B6D4", listOf("Mezzi GTT", "Treni / Aerei", "Taxi")),
+                "Trasporti" to Pair("#F59E0B", listOf("Benzina", "Mezzi pubblici", "Treni / Aerei", "Taxi", "Parcheggio")),
+                "Svago" to Pair("#EC4899", listOf("Cinema", "Uscite Amici", "Concerti", "Eventi")),
+                "Ristoranti" to Pair("#8B5CF6", listOf("Cena fuori", "Pizzeria", "Sushi", "Takeaway")),
+                "Salute" to Pair("#10B981", listOf("Farmacia", "Visite mediche", "Dentista", "Integratori")),
+                "Regali" to Pair("#F43F5E", listOf("Compleanni", "Natale", "Ricorrenze")),
+                "Abitazione" to Pair("#EAB308", listOf("Affitto", "Luce & Gas", "Internet/Wi-Fi", "Spese Condominiali")),
+                "Shopping" to Pair("#D946EF", listOf("Abbigliamento", "Scarpe", "Accessori")),
+                "Sport" to Pair("#14B8A6", listOf("Palestra", "Scarpe da corsa", "Attrezzatura")),
                 "Studio & PoliTO" to Pair("#3B82F6", listOf("Tasse Universitarie", "Libri & Dispense", "Mensa")),
-                "Lifestyle & Svago" to Pair("#EC4899", listOf("Uscite Amici", "Cinema", "Abbigliamento", "Shopping")),
-                "Tecnologia & SaaS" to Pair("#6366F1", listOf("Abbonamenti Software", "Hosting / Cloud", "Gadget"))
+                "Tecnologia" to Pair("#6366F1", listOf("Abbonamenti Software", "Hosting / Cloud", "Gadget")),
+                "Viaggi" to Pair("#06B6D4", listOf("Hotel / Alloggi", "Voli", "Esperienze"))
             )
 
             for ((catName, meta) in expenseMap) {
@@ -94,7 +106,9 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     CategoryEntity(name = catName, type = TransactionType.EXPENSE, colorHex = meta.first)
                 )
                 for (subName in meta.second) {
-                    categoryDao.insertSubcategory(SubcategoryEntity(categoryId = catId, name = subName))
+                    categoryDao.insertSubcategory(
+                        SubcategoryEntity(categoryId = catId, name = subName, iconName = "label")
+                    )
                 }
             }
 
@@ -111,7 +125,9 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     CategoryEntity(name = catName, type = TransactionType.INCOME, colorHex = meta.first)
                 )
                 for (subName in meta.second) {
-                    categoryDao.insertSubcategory(SubcategoryEntity(categoryId = catId, name = subName))
+                    categoryDao.insertSubcategory(
+                        SubcategoryEntity(categoryId = catId, name = subName, iconName = "label")
+                    )
                 }
             }
         }

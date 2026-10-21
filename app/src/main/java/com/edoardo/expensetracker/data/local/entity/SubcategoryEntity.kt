@@ -21,5 +21,7 @@ data class SubcategoryEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val categoryId: Long,
-    val name: String
+    val name: String,
+    val iconName: String = "label",
+    val isArchived: Boolean = false
 )

@@ -36,6 +36,8 @@ class LeonardoStatsExporter(
     private val transactionDao: TransactionDao
 ) {
 
+    private val json = Json { prettyPrint = true }
+
     suspend fun generateMonthlyReport(year: Int, month: Int): LeonardoFinancialReport {
         val calendar = Calendar.getInstance()
         calendar.set(year, month - 1, 1, 0, 0, 0)
@@ -72,7 +74,7 @@ class LeonardoStatsExporter(
 
     suspend fun exportReportToJsonFile(outputFile: File, year: Int, month: Int) {
         val report = generateMonthlyReport(year, month)
-        val jsonString = Json { prettyPrint = true }.encodeToString(report)
+        val jsonString = json.encodeToString(report)
         outputFile.writeText(jsonString)
     }
 }

@@ -27,6 +27,20 @@ interface AccountDao {
     """)
     fun observeAccountsWithBalance(): Flow<List<AccountWithBalance>>
 
+    @Query("""
+        SELECT a.*,
+        (
+            a.initialBalance
+            + COALESCE((SELECT SUM(amount) FROM transactions WHERE accountId = a.id AND type = 'INCOME'), 0.0)
+            - COALESCE((SELECT SUM(amount) FROM transactions WHERE accountId = a.id AND type = 'EXPENSE'), 0.0)
+            - COALESCE((SELECT SUM(amount) FROM transactions WHERE accountId = a.id AND type = 'TRANSFER'), 0.0)
+            + COALESCE((SELECT SUM(amount) FROM transactions WHERE destinationAccountId = a.id AND type = 'TRANSFER'), 0.0)
+        ) AS currentBalance
+        FROM accounts a
+        ORDER BY a.isActive DESC, a.id ASC
+    """)
+    fun observeAllAccountsWithBalance(): Flow<List<AccountWithBalance>>
+
     @Query("SELECT * FROM accounts WHERE isActive = 1 ORDER BY id ASC")
     suspend fun getActiveAccounts(): List<AccountEntity>
 
