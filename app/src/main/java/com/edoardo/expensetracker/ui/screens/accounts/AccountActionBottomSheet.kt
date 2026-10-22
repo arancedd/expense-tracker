@@ -166,6 +166,21 @@ fun AccountActionBottomSheet(
                                         color = PrimaryMint
                                     )
                                 }
+                            } else if (account.accountType == com.edoardo.expensetracker.data.local.entity.AccountType.INVESTMENT) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color(0xFF0EA5E9).copy(alpha = 0.15f))
+                                        .border(1.dp, Color(0xFF0EA5E9).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                                ) {
+                                    Text(
+                                        text = "INVESTIMENTO",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF38BDF8)
+                                    )
+                                }
                             } else {
                                 Box(
                                     modifier = Modifier
@@ -255,15 +270,17 @@ fun AccountActionBottomSheet(
                                     }
                                 )
 
-                                RoundActionButton(
-                                    icon = Icons.Default.AccountBalanceWallet,
-                                    label = "Aggiorna Saldo",
-                                    iconColor = AccentSky,
-                                    onClick = {
-                                        expressionInput = String.format(Locale.US, "%.2f", balance)
-                                        sheetMode = AccountSheetMode.ADJUST_BALANCE
-                                    }
-                                )
+                                if (account.accountType != com.edoardo.expensetracker.data.local.entity.AccountType.INVESTMENT) {
+                                    RoundActionButton(
+                                        icon = Icons.Default.AccountBalanceWallet,
+                                        label = "Aggiorna Saldo",
+                                        iconColor = AccentSky,
+                                        onClick = {
+                                            expressionInput = String.format(Locale.US, "%.2f", balance)
+                                            sheetMode = AccountSheetMode.ADJUST_BALANCE
+                                        }
+                                    )
+                                }
 
                                 RoundActionButton(
                                     icon = Icons.AutoMirrored.Filled.ReceiptLong,
@@ -272,6 +289,16 @@ fun AccountActionBottomSheet(
                                     onClick = {
                                         showInlineTransactions = !showInlineTransactions
                                     }
+                                )
+                            }
+
+                            if (account.accountType == com.edoardo.expensetracker.data.local.entity.AccountType.INVESTMENT) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "💡 Il saldo di questo conto si aggiorna automaticamente in base alle azioni comprate e vendute nella sezione Investimenti.",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                                 )
                             }
 

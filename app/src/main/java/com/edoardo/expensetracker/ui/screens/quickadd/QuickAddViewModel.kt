@@ -43,11 +43,14 @@ class QuickAddViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             repository.observeAccountsWithBalance().collect { accounts ->
+                val usableAccounts = accounts.filter {
+                    it.account.accountType != com.edoardo.expensetracker.data.local.entity.AccountType.INVESTMENT
+                }
                 _uiState.update { current ->
                     current.copy(
-                        accounts = accounts,
-                        selectedAccountId = current.selectedAccountId ?: accounts.firstOrNull()?.account?.id,
-                        selectedDestinationAccountId = current.selectedDestinationAccountId ?: accounts.getOrNull(1)?.account?.id
+                        accounts = usableAccounts,
+                        selectedAccountId = current.selectedAccountId ?: usableAccounts.firstOrNull()?.account?.id,
+                        selectedDestinationAccountId = current.selectedDestinationAccountId ?: usableAccounts.getOrNull(1)?.account?.id
                     )
                 }
             }

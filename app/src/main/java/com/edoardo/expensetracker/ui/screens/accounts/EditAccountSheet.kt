@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,6 +41,7 @@ import com.edoardo.expensetracker.ui.theme.*
 @Composable
 fun EditAccountSheet(
     account: AccountEntity? = null,
+    initialType: AccountType = AccountType.REGULAR,
     onDismiss: () -> Unit,
     onSave: (name: String, type: AccountType, colorHex: String, iconName: String, isActive: Boolean, includeInTotal: Boolean, initialBalance: Double) -> Unit,
     onDelete: (() -> Unit)? = null
@@ -48,11 +50,19 @@ fun EditAccountSheet(
     var initialBalanceStr by remember { mutableStateOf(if (account == null) "" else String.format(java.util.Locale.US, "%.2f", account.initialBalance)) }
     var selectedType by remember {
         mutableStateOf(
-            account?.accountType ?: AccountType.REGULAR
+            account?.accountType ?: initialType
         )
     }
-    var selectedColor by remember { mutableStateOf(account?.colorHex ?: "#10B981") }
-    var selectedIcon by remember { mutableStateOf(account?.iconName ?: "account_balance") }
+    var selectedColor by remember {
+        mutableStateOf(
+            account?.colorHex ?: if (initialType == AccountType.INVESTMENT) "#0EA5E9" else "#10B981"
+        )
+    }
+    var selectedIcon by remember {
+        mutableStateOf(
+            account?.iconName ?: if (initialType == AccountType.INVESTMENT) "trending_up" else "account_balance"
+        )
+    }
     var isActive by remember { mutableStateOf(account?.isActive ?: true) }
     var includeInTotal by remember { mutableStateOf(account?.includeInTotalBalance ?: true) }
     var description by remember { mutableStateOf("") }
@@ -203,54 +213,7 @@ fun EditAccountSheet(
                     }
                 }
 
-                // Saldo Iniziale (Solo per nuovo conto)
-                if (account == null) {
-                    item {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            color = SurfaceElevated,
-                            border = BorderStroke(1.dp, SurfaceBorder)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                            ) {
-                                Text(
-                                    text = "Saldo Iniziale (€)",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextSecondary
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                BasicTextField(
-                                    value = initialBalanceStr,
-                                    onValueChange = { initialBalanceStr = it },
-                                    singleLine = true,
-                                    textStyle = TextStyle(
-                                        color = TextPrimary,
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    decorationBox = { innerTextField ->
-                                        if (initialBalanceStr.isEmpty()) {
-                                            Text(
-                                                "0.00",
-                                                color = TextMuted,
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                        innerTextField()
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Tipologia di Conto (Regolare, Risparmi, Debiti)
+                // Tipologia di Conto (Regolare, Risparmi, Debiti, Investimenti)
                 item {
                     Text(
                         text = "Tipo di Conto",
@@ -268,12 +231,14 @@ fun EditAccountSheet(
                         listOf(
                             Triple(AccountType.REGULAR, "Regolare", Icons.Default.AccountBalance),
                             Triple(AccountType.SAVINGS, "Risparmi", Icons.Default.Savings),
-                            Triple(AccountType.DEBT, "Debiti", Icons.Default.CreditCard)
+                            Triple(AccountType.DEBT, "Debiti", Icons.Default.CreditCard),
+                            Triple(AccountType.INVESTMENT, "Investimenti", Icons.AutoMirrored.Filled.TrendingUp)
                         ).forEach { (type, label, icon) ->
                             val isSelected = selectedType == type
                             val typeColor = when (type) {
                                 AccountType.DEBT -> ExpenseRed
                                 AccountType.SAVINGS -> SecondaryViolet
+                                AccountType.INVESTMENT -> Color(0xFF0EA5E9)
                                 else -> PrimaryMint
                             }
                             val corner = RoundedCornerShape(12.dp)
@@ -288,7 +253,7 @@ fun EditAccountSheet(
                                 border = BorderStroke(1.dp, if (isSelected) typeColor else SurfaceBorder)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(vertical = 12.dp),
+                                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Icon(
@@ -300,9 +265,87 @@ fun EditAccountSheet(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = label,
-                                        fontSize = 12.sp,
+                                        fontSize = 11.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) typeColor else TextPrimary
+                                        color = if (isSelected) typeColor else TextPrimary,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Saldo Iniziale (Solo per nuovo conto, non visibile per Investimenti)
+                if (account == null) {
+                    item {
+                        if (selectedType == AccountType.INVESTMENT) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(18.dp),
+                                color = Color(0xFF0EA5E9).copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, Color(0xFF0EA5E9).copy(alpha = 0.35f))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = Color(0xFF38BDF8),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "Il saldo si aggiornerà automaticamente con il controvalore dei tuoi stock comprati o venduti. Non richiede saldo iniziale.",
+                                        fontSize = 12.sp,
+                                        color = TextSecondary,
+                                        lineHeight = 16.sp
+                                    )
+                                }
+                            }
+                        } else {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(18.dp),
+                                color = SurfaceElevated,
+                                border = BorderStroke(1.dp, SurfaceBorder)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = "Saldo Iniziale (€)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextSecondary
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    BasicTextField(
+                                        value = initialBalanceStr,
+                                        onValueChange = { initialBalanceStr = it },
+                                        singleLine = true,
+                                        textStyle = TextStyle(
+                                            color = TextPrimary,
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        decorationBox = { innerTextField ->
+                                            if (initialBalanceStr.isEmpty()) {
+                                                Text(
+                                                    "0.00",
+                                                    color = TextMuted,
+                                                    fontSize = 18.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            innerTextField()
+                                        }
                                     )
                                 }
                             }

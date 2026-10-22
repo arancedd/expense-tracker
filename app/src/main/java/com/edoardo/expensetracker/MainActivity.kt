@@ -21,6 +21,8 @@ import com.edoardo.expensetracker.ui.screens.budgets.BudgetsScreen
 import com.edoardo.expensetracker.ui.screens.budgets.BudgetsViewModel
 import com.edoardo.expensetracker.ui.screens.dashboard.DashboardScreen
 import com.edoardo.expensetracker.ui.screens.dashboard.DashboardViewModel
+import com.edoardo.expensetracker.ui.screens.investments.InvestmentsScreen
+import com.edoardo.expensetracker.ui.screens.investments.InvestmentsViewModel
 import com.edoardo.expensetracker.ui.screens.quickadd.OneMoneyAddExpenseSheet
 import com.edoardo.expensetracker.ui.screens.quickadd.QuickAddViewModel
 import com.edoardo.expensetracker.ui.screens.transactions.TransactionsScreen
@@ -48,10 +50,11 @@ fun MainAppScreen() {
     val quickAddViewModel: QuickAddViewModel = hiltViewModel()
     val dashboardViewModel: DashboardViewModel = hiltViewModel()
     val accountsViewModel: AccountsViewModel = hiltViewModel()
+    val investmentsViewModel: InvestmentsViewModel = hiltViewModel()
     val transactionsViewModel: TransactionsViewModel = hiltViewModel()
     val budgetsViewModel: BudgetsViewModel = hiltViewModel()
 
-    val screens = listOf(Screen.Dashboard, Screen.Accounts, Screen.Transactions, Screen.Budgets)
+    val screens = listOf(Screen.Dashboard, Screen.Accounts, Screen.Investments, Screen.Transactions, Screen.Budgets)
 
     Scaffold(
         bottomBar = {
@@ -109,6 +112,9 @@ fun MainAppScreen() {
                             quickAddViewModel.onAccountSelected(accountId)
                             isAddExpenseOpen = true
                         }
+                    )
+                    Screen.Investments -> InvestmentsScreen(
+                        viewModel = investmentsViewModel
                     )
                     Screen.Transactions -> TransactionsScreen(
                         viewModel = transactionsViewModel,

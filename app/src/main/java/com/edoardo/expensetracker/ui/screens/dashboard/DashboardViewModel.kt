@@ -139,7 +139,9 @@ data class OneMoneyCategoryItem(
     val colorHex: String,
     val iconName: String,
     val totalSpent: Double,
-    val subcategoryCount: Int = 0
+    val subcategoryCount: Int = 0,
+    val budgetLimit: Double? = null,
+    val hasBudget: Boolean = false
 )
 
 data class DashboardUiState(
@@ -172,6 +174,7 @@ private data class DashboardCoreData(
     val overview: MonthlyOverview,
     val categories: List<CategoryWithSubcategories>,
     val stats: List<CategoryStat>,
+    val budgets: List<com.edoardo.expensetracker.data.local.entity.BudgetEntity>,
     val periodRange: PeriodRange
 )
 
@@ -225,9 +228,10 @@ class DashboardViewModel @Inject constructor(
             repository.observeAccountsWithBalance(),
             repository.observePeriodOverview(range.fromMillis, range.toMillis),
             repository.observeCategoriesWithType(type),
-            repository.observePeriodStatsByCategory(type, range.fromMillis, range.toMillis)
-        ) { accounts, overview, categories, stats ->
-            DashboardCoreData(accounts, overview, categories, stats, range)
+            repository.observePeriodStatsByCategory(type, range.fromMillis, range.toMillis),
+            repository.observeAllBudgets()
+        ) { accounts, overview, categories, stats, budgets ->
+            DashboardCoreData(accounts, overview, categories, stats, budgets, range)
         }
     }
 
@@ -260,17 +264,22 @@ class DashboardViewModel @Inject constructor(
         } else 0.0
 
         val statsMap = core.stats.associateBy { it.categoryId }
+        val budgetsMap = core.budgets.associateBy { it.categoryId }
 
         val mappedCategories = core.categories.map { catWithSubs ->
             val cat = catWithSubs.category
             val spent = statsMap[cat.id]?.totalAmount ?: 0.0
+            val budget = budgetsMap[cat.id]
+            val budgetLimit = if (budget != null && budget.amountLimit > 0) budget.amountLimit else null
             OneMoneyCategoryItem(
                 categoryId = cat.id,
                 name = cat.name,
                 colorHex = cat.colorHex,
                 iconName = cat.iconName,
                 totalSpent = spent,
-                subcategoryCount = catWithSubs.subcategories.size
+                subcategoryCount = catWithSubs.subcategories.size,
+                budgetLimit = budgetLimit,
+                hasBudget = budgetLimit != null && budgetLimit > 0
             )
         }
 
@@ -424,12 +433,10 @@ class DashboardViewModel @Inject constructor(
 
     fun setCategoryBudget(categoryId: Long, limitAmount: Double) {
         viewModelScope.launch {
-            val ym = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
             repository.insertOrUpdateBudget(
                 com.edoardo.expensetracker.data.local.entity.BudgetEntity(
                     categoryId = categoryId,
-                    amountLimit = limitAmount,
-                    yearMonth = ym
+                    amountLimit = limitAmount
                 )
             )
         }

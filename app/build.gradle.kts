@@ -74,5 +74,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
+    // OkHttp (WebSocket & Network)
+    implementation(libs.okhttp)
+
     debugImplementation(libs.androidx.ui.tooling)
 }

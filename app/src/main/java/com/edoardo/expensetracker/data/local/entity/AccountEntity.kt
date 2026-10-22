@@ -10,7 +10,8 @@ enum class AccountType {
     CHECKING,
     CREDIT_CARD,
     CASH,
-    CRYPTO
+    CRYPTO,
+    INVESTMENT
 }
 
 @Entity(tableName = "accounts")

@@ -16,15 +16,16 @@ import androidx.room.PrimaryKey
         )
     ],
     indices = [
-        Index("categoryId"),
-        Index(value = ["categoryId", "yearMonth"], unique = true)
+        Index(value = ["categoryId"], unique = true)
     ]
 )
 data class BudgetEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val categoryId: Long,
-    val yearMonth: String, // formato "YYYY-MM"
     val amountLimit: Double,
-    val alertThreshold: Double = 0.8 // 80%
+    val isPercentage: Boolean = false,
+    val percentageValue: Double = 0.0,
+    val alertThreshold: Double = 0.8,
+    val hasSubcategoriesBudget: Boolean = false
 )

@@ -49,6 +49,9 @@ object AppModule {
     fun provideBudgetDao(db: ExpenseDatabase): BudgetDao = db.budgetDao()
 
     @Provides
+    fun provideInvestmentDao(db: ExpenseDatabase): com.edoardo.expensetracker.data.local.dao.InvestmentDao = db.investmentDao()
+
+    @Provides
     @Singleton
     fun provideLeonardoStatsExporter(transactionDao: TransactionDao): LeonardoStatsExporter {
         return LeonardoStatsExporter(transactionDao)

@@ -1,11 +1,13 @@
 package com.edoardo.expensetracker.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.edoardo.expensetracker.data.local.entity.AccountType
 
@@ -19,6 +21,7 @@ fun getAccountIcon(type: AccountType): ImageVector {
         AccountType.CASH -> Icons.Default.Payments
         AccountType.SAVINGS -> Icons.Default.Savings
         AccountType.CRYPTO -> Icons.Default.CurrencyBitcoin
+        AccountType.INVESTMENT -> Icons.AutoMirrored.Filled.TrendingUp
     }
 }
 
@@ -31,5 +34,6 @@ fun getAccountTypeLabel(type: AccountType): String {
         AccountType.CREDIT_CARD -> "Carta"
         AccountType.CASH -> "Contanti"
         AccountType.CRYPTO -> "Crypto"
+        AccountType.INVESTMENT -> "Investimenti"
     }
 }

@@ -735,6 +735,8 @@ private fun RenderCategoryCircle(
         CategoryCircleItem(
             categoryName = cat.name,
             totalAmount = cat.totalSpent,
+            budgetLimit = cat.budgetLimit,
+            hasBudget = cat.hasBudget,
             colorHex = cat.colorHex,
             icon = getCategoryIconByName(cat.iconName),
             isEditMode = isEditMode,
