@@ -91,26 +91,6 @@ fun DashboardScreen(
     var budgetInputAmount by remember { mutableStateOf("") }
 
     val listState = rememberLazyListState()
-    val canScrollContent by remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val visibleItems = layoutInfo.visibleItemsInfo
-            if (visibleItems.size < totalItems) {
-                true
-            } else if (visibleItems.isNotEmpty()) {
-                val lastItem = visibleItems.last()
-                (lastItem.offset + lastItem.size) - layoutInfo.viewportEndOffset > 100
-            } else {
-                false
-            }
-        }
-    }
-    val isScrolled by remember {
-        derivedStateOf {
-            canScrollContent && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 30)
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -266,8 +246,7 @@ fun DashboardScreen(
                             }
                         }
                     }
-                },
-                bottomContentVisible = !isScrolled
+                }
             )
 
             // --- 2. Selettore Periodo Minimale con Pillola Data Calendario ---
@@ -348,7 +327,6 @@ fun DashboardScreen(
         // --- Contenuto Scorrevole sotto l'Header fisso ---
         LazyColumn(
             state = listState,
-            userScrollEnabled = canScrollContent,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)

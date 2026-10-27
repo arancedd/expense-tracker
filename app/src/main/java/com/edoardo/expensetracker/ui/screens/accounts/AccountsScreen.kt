@@ -52,26 +52,6 @@ fun AccountsScreen(
     var selectedTab by remember { mutableStateOf(0) } // 0 = Accounts, 1 = Debts
 
     val listState = rememberLazyListState()
-    val canScrollContent by remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val visibleItems = layoutInfo.visibleItemsInfo
-            if (visibleItems.size < totalItems) {
-                true
-            } else if (visibleItems.isNotEmpty()) {
-                val lastItem = visibleItems.last()
-                (lastItem.offset + lastItem.size) - layoutInfo.viewportEndOffset > 100
-            } else {
-                false
-            }
-        }
-    }
-    val isScrolled by remember {
-        derivedStateOf {
-            canScrollContent && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 30)
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -222,15 +202,13 @@ fun AccountsScreen(
                         }
                     }
                 }
-            },
-            bottomContentVisible = !isScrolled
+            }
         )
 
         Spacer(modifier = Modifier.height(10.dp))
 
         LazyColumn(
             state = listState,
-            userScrollEnabled = canScrollContent,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
