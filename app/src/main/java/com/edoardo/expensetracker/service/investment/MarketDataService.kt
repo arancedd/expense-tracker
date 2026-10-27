@@ -96,10 +96,29 @@ class MarketDataService @Inject constructor() {
 
     /**
      * Scarica la quotazione di mercato reale aggiornata per un simbolo (es. "VWCE.DE", "^GSPC", "AAPL", "BTC-USD").
+     * Se il simbolo non specifica una borsa (es. "VWCE", "SWDA"), tenta automaticamente i suffissi delle
+     * principali borse europee (.DE, .MI, .PA, .L) per garantire la corrispondenza con i prezzi live.
      * Restituisce Pair(regularMarketPrice, chartPreviousClose) o null in caso di errore.
      */
     suspend fun fetchLatestPrice(symbol: String): Pair<Double, Double>? = withContext(Dispatchers.IO) {
-        try {
+        val trimmed = symbol.trim().uppercase()
+        val candidates = if (trimmed.contains(".") || trimmed.startsWith("^") || trimmed.contains("-")) {
+            listOf(trimmed)
+        } else {
+            listOf(trimmed, "$trimmed.DE", "$trimmed.MI", "$trimmed.PA", "$trimmed.L")
+        }
+
+        for (cand in candidates) {
+            val quote = fetchSingleSymbolPrice(cand)
+            if (quote != null) {
+                return@withContext quote
+            }
+        }
+        null
+    }
+
+    private fun fetchSingleSymbolPrice(symbol: String): Pair<Double, Double>? {
+        return try {
             val encodedSymbol = URLEncoder.encode(symbol, "UTF-8")
             val url = "https://query1.finance.yahoo.com/v8/finance/chart/$encodedSymbol?interval=1d&range=1d"
 
@@ -109,25 +128,24 @@ class MarketDataService @Inject constructor() {
                 .build()
 
             httpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext null
+                if (!response.isSuccessful) return null
 
-                val bodyStr = response.body?.string() ?: return@withContext null
+                val bodyStr = response.body?.string() ?: return null
                 val json = JSONObject(bodyStr)
-                val chartObj = json.optJSONObject("chart") ?: return@withContext null
-                val resultArray = chartObj.optJSONArray("result") ?: return@withContext null
-                if (resultArray.length() == 0) return@withContext null
+                val chartObj = json.optJSONObject("chart") ?: return null
+                val resultArray = chartObj.optJSONArray("result") ?: return null
+                if (resultArray.length() == 0) return null
 
-                val metaObj = resultArray.getJSONObject(0).optJSONObject("meta") ?: return@withContext null
+                val metaObj = resultArray.getJSONObject(0).optJSONObject("meta") ?: return null
 
                 val currentPrice = metaObj.optDouble("regularMarketPrice", Double.NaN)
                 val previousClose = metaObj.optDouble("chartPreviousClose", currentPrice)
 
-                if (currentPrice.isNaN() || currentPrice <= 0.0) return@withContext null
+                if (currentPrice.isNaN() || currentPrice <= 0.0) return null
 
                 Pair(currentPrice, if (previousClose.isNaN()) currentPrice else previousClose)
             }
         } catch (e: Exception) {
-            Log.d(tag, "Impossibile recuperare quotazione live per $symbol: ${e.message}")
             null
         }
     }

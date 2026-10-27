@@ -180,16 +180,16 @@ abstract class ExpenseDatabase : RoomDatabase() {
                 StockEntity(
                     symbol = "VWCE",
                     name = "Vanguard FTSE All-World UCITS ETF",
-                    currentPrice = 124.80,
-                    previousClosePrice = 123.90,
+                    currentPrice = 170.80,
+                    previousClosePrice = 170.00,
                     assetType = StockEntity.TYPE_ETF,
                     isFollowed = true
                 ),
                 StockEntity(
                     symbol = "SWDA",
                     name = "iShares Core MSCI World UCITS ETF",
-                    currentPrice = 98.40,
-                    previousClosePrice = 97.60,
+                    currentPrice = 130.60,
+                    previousClosePrice = 130.50,
                     assetType = StockEntity.TYPE_ETF,
                     isFollowed = true
                 ),
