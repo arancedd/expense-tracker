@@ -21,7 +21,8 @@ import kotlin.random.Random
  */
 @Singleton
 class StockPriceService @Inject constructor(
-    private val repository: ExpenseRepository
+    private val repository: ExpenseRepository,
+    private val marketDataService: MarketDataService
 ) {
     private val tag = "StockPriceService"
 
@@ -137,23 +138,41 @@ class StockPriceService @Inject constructor(
         val now = System.currentTimeMillis()
 
         for (stock in stocks) {
-            // Se è già aggiornato via WebSocket negli ultimi 5 secondi, non sovrascrivere
+            // Se è già aggiornato via WebSocket negli ultimi 15 secondi, non sovrascrivere
             if (stock.symbol.endsWith("USDT") && now - stock.lastUpdated < 15_000L) {
                 continue
             }
 
-            // Simula fluttuazione reale al minuto coerente con la tipologia di strumento
-            val volatility = when {
-                stock.assetType == com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_CRYPTO || stock.symbol.contains("BTC") || stock.symbol.contains("ETH") -> 0.0055
-                stock.symbol in listOf("NVDA", "TSLA") -> 0.0035
-                stock.assetType in listOf(com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_INDEX, com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_ETF) -> 0.0012
-                else -> 0.0022
+            // Tenta prima il recupero della quotazione reale da Yahoo Finance
+            var updated = false
+            val realQuote = marketDataService.fetchLatestPrice(stock.symbol)
+            if (realQuote != null) {
+                val (realPrice, realPrevClose) = realQuote
+                if (realPrice > 0.0) {
+                    val updatedStock = stock.copy(
+                        currentPrice = realPrice,
+                        previousClosePrice = realPrevClose,
+                        lastUpdated = now
+                    )
+                    repository.insertStock(updatedStock)
+                    updated = true
+                }
             }
-            val changePercent = (Random.nextDouble(-volatility, volatility * 1.05))
-            val newPrice = (stock.currentPrice * (1.0 + changePercent)).coerceAtLeast(0.01)
-            val roundedPrice = Math.round(newPrice * 100.0) / 100.0
 
-            repository.updateStockPrice(stock.symbol, roundedPrice, now)
+            // Fallback con micro-variazione realistica se offline o dati di borsa non disponibili al momento
+            if (!updated) {
+                val volatility = when {
+                    stock.assetType == com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_CRYPTO || stock.symbol.contains("BTC") || stock.symbol.contains("ETH") -> 0.0055
+                    stock.symbol in listOf("NVDA", "TSLA") -> 0.0035
+                    stock.assetType in listOf(com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_INDEX, com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_ETF) -> 0.0012
+                    else -> 0.0022
+                }
+                val changePercent = (Random.nextDouble(-volatility, volatility * 1.05))
+                val newPrice = (stock.currentPrice * (1.0 + changePercent)).coerceAtLeast(0.01)
+                val roundedPrice = Math.round(newPrice * 100.0) / 100.0
+
+                repository.updateStockPrice(stock.symbol, roundedPrice, now)
+            }
         }
 
         _lastTickTime.value = now

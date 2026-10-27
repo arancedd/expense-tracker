@@ -90,6 +90,9 @@ fun InvestmentsScreen(
         if (state.isFollowSheetOpen) {
             FollowStockSheet(
                 allStocks = state.allAvailableStocks,
+                onlineResults = state.onlineSearchResults,
+                isSearchingOnline = state.isSearchingOnline,
+                onSearchOnline = { query -> viewModel.searchOnline(query) },
                 onDismiss = { viewModel.closeFollowSheet() },
                 onToggleFollow = { sym, followed ->
                     viewModel.toggleFollowStock(sym, followed)

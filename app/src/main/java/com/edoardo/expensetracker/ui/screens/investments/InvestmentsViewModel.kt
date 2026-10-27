@@ -10,8 +10,10 @@ import com.edoardo.expensetracker.data.local.entity.InvestmentTransactionEntity
 import com.edoardo.expensetracker.data.local.entity.InvestmentTransactionType
 import com.edoardo.expensetracker.data.local.entity.StockEntity
 import com.edoardo.expensetracker.data.repository.ExpenseRepository
+import com.edoardo.expensetracker.service.investment.MarketDataService
 import com.edoardo.expensetracker.service.investment.StockPriceService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -35,6 +37,8 @@ data class InvestmentsUiState(
     val totalPortfolioValue: Double = 0.0,
     val transactions: List<InvestmentTransactionWithAccount> = emptyList(),
     val allAvailableStocks: List<StockEntity> = emptyList(),
+    val onlineSearchResults: List<StockEntity> = emptyList(),
+    val isSearchingOnline: Boolean = false,
     val selectedStockForTrade: StockEntity? = null,
     val isFollowSheetOpen: Boolean = false,
     val isAddAccountOpen: Boolean = false,
@@ -44,11 +48,14 @@ data class InvestmentsUiState(
 @HiltViewModel
 class InvestmentsViewModel @Inject constructor(
     private val repository: ExpenseRepository,
-    private val stockPriceService: StockPriceService
+    private val stockPriceService: StockPriceService,
+    private val marketDataService: MarketDataService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InvestmentsUiState())
     val uiState: StateFlow<InvestmentsUiState> = _uiState.asStateFlow()
+
+    private var searchJob: Job? = null
 
     init {
         // 1. Osserva se esistono conti di tipo INVESTMENT
@@ -165,7 +172,40 @@ class InvestmentsViewModel @Inject constructor(
 
     fun toggleFollowStock(symbol: String, isFollowed: Boolean) {
         viewModelScope.launch {
-            repository.setStockFollowed(symbol, isFollowed)
+            val existing = repository.getAllStocksSync().firstOrNull { it.symbol.equals(symbol, ignoreCase = true) }
+            if (existing != null) {
+                repository.setStockFollowed(existing.symbol, isFollowed)
+            } else {
+                // Proviene dalla ricerca online: scarica la quotazione live e inserisci nel DB
+                val onlineCandidate = _uiState.value.onlineSearchResults.firstOrNull { it.symbol.equals(symbol, ignoreCase = true) }
+                val quote = marketDataService.fetchLatestPrice(symbol)
+                val price = quote?.first ?: 10.0
+                val prev = quote?.second ?: price
+                val stock = StockEntity(
+                    symbol = symbol.uppercase().trim(),
+                    name = onlineCandidate?.name ?: symbol,
+                    currentPrice = price,
+                    previousClosePrice = prev,
+                    assetType = onlineCandidate?.assetType ?: StockEntity.TYPE_STOCK,
+                    isFollowed = isFollowed
+                )
+                repository.insertStock(stock)
+            }
+        }
+    }
+
+    fun searchOnline(query: String) {
+        searchJob?.cancel()
+        val q = query.trim()
+        if (q.length < 2) {
+            _uiState.update { it.copy(onlineSearchResults = emptyList(), isSearchingOnline = false) }
+            return
+        }
+
+        searchJob = viewModelScope.launch {
+            _uiState.update { it.copy(isSearchingOnline = true) }
+            val results = marketDataService.searchAssetsOnline(q)
+            _uiState.update { it.copy(onlineSearchResults = results, isSearchingOnline = false) }
         }
     }
 

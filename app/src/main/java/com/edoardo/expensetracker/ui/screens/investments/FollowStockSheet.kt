@@ -33,6 +33,9 @@ import java.util.Locale
 @Composable
 fun FollowStockSheet(
     allStocks: List<StockEntity>,
+    onlineResults: List<StockEntity> = emptyList(),
+    isSearchingOnline: Boolean = false,
+    onSearchOnline: (String) -> Unit = {},
     onDismiss: () -> Unit,
     onToggleFollow: (symbol: String, isFollowed: Boolean) -> Unit,
     onAddNewStock: (symbol: String, name: String, price: Double, assetType: String) -> Unit
@@ -49,9 +52,14 @@ fun FollowStockSheet(
         StockEntity.TYPE_CRYPTO to "Crypto"
     )
 
-    val filteredStocks = remember(searchQuery, selectedFilter, allStocks) {
+    val combinedStocks = remember(searchQuery, selectedFilter, allStocks, onlineResults) {
         val q = searchQuery.trim().lowercase()
-        allStocks.filter { stock ->
+        // Unisci i locali e i risultati online (senza duplicare i simboli già presenti)
+        val localSymbols = allStocks.map { it.symbol.uppercase() }.toSet()
+        val nonDuplicatedOnline = onlineResults.filter { !localSymbols.contains(it.symbol.uppercase()) }
+        val merged = allStocks + nonDuplicatedOnline
+
+        merged.filter { stock ->
             val matchesFilter = when (selectedFilter) {
                 "ALL" -> true
                 StockEntity.TYPE_ETF -> stock.assetType == StockEntity.TYPE_ETF || stock.assetType == StockEntity.TYPE_COMMODITY
@@ -144,7 +152,10 @@ fun FollowStockSheet(
                     Spacer(modifier = Modifier.width(10.dp))
                     BasicTextField(
                         value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        onValueChange = {
+                            searchQuery = it
+                            onSearchOnline(it)
+                        },
                         singleLine = true,
                         textStyle = TextStyle(
                             color = TextPrimary,
@@ -164,6 +175,14 @@ fun FollowStockSheet(
                         },
                         modifier = Modifier.weight(1f)
                     )
+                    if (isSearchingOnline) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            color = PrimaryMint,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                     if (searchQuery.isNotEmpty()) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -223,7 +242,7 @@ fun FollowStockSheet(
                     .heightIn(max = 400.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(filteredStocks, key = { it.symbol }) { stock ->
+                items(combinedStocks, key = { it.symbol }) { stock ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -282,7 +301,7 @@ fun FollowStockSheet(
                     }
                 }
 
-                if (filteredStocks.isEmpty()) {
+                if (combinedStocks.isEmpty()) {
                     item {
                         Column(
                             modifier = Modifier
