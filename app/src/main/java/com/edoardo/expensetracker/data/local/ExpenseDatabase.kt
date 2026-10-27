@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
         StockEntity::class,
         InvestmentTransactionEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class ExpenseDatabase : RoomDatabase() {
@@ -133,6 +133,12 @@ abstract class ExpenseDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE stocks ADD COLUMN assetType TEXT NOT NULL DEFAULT 'STOCK'")
+            }
+        }
+
         fun getDatabase(context: Context, scope: CoroutineScope): ExpenseDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -140,7 +146,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     ExpenseDatabase::class.java,
                     "expense_tracker_db"
                 )
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .fallbackToDestructiveMigration()
                 .build()
 
@@ -164,27 +170,221 @@ abstract class ExpenseDatabase : RoomDatabase() {
                 seedDatabase(database)
             }
 
-            // Assicurati che ci siano stock nel catalogo
-            val existingStocks = investmentDao.getAllStocksSync()
-            if (existingStocks.isEmpty()) {
-                seedStocks(investmentDao)
-            }
+            // Assicurati che tutti gli ETF, Indici e Stock di base siano presenti
+            seedStocks(investmentDao)
         }
 
         suspend fun seedStocks(investmentDao: InvestmentDao) {
             val defaultStocks = listOf(
-                StockEntity(symbol = "AAPL", name = "Apple Inc.", currentPrice = 232.50, previousClosePrice = 230.10, isFollowed = true),
-                StockEntity(symbol = "NVDA", name = "NVIDIA Corporation", currentPrice = 141.20, previousClosePrice = 138.80, isFollowed = true),
-                StockEntity(symbol = "TSLA", name = "Tesla, Inc.", currentPrice = 218.40, previousClosePrice = 213.90, isFollowed = true),
-                StockEntity(symbol = "MSFT", name = "Microsoft Corporation", currentPrice = 428.10, previousClosePrice = 425.30, isFollowed = true),
-                StockEntity(symbol = "AMZN", name = "Amazon.com, Inc.", currentPrice = 186.70, previousClosePrice = 185.20, isFollowed = false),
-                StockEntity(symbol = "GOOGL", name = "Alphabet Inc.", currentPrice = 165.90, previousClosePrice = 164.50, isFollowed = false),
-                StockEntity(symbol = "META", name = "Meta Platforms, Inc.", currentPrice = 582.40, previousClosePrice = 576.80, isFollowed = false),
-                StockEntity(symbol = "SPY", name = "SPDR S&P 500 ETF", currentPrice = 581.30, previousClosePrice = 579.50, isFollowed = false),
-                StockEntity(symbol = "BTCUSDT", name = "Bitcoin", currentPrice = 67450.00, previousClosePrice = 66800.00, isFollowed = false),
-                StockEntity(symbol = "ETHUSDT", name = "Ethereum", currentPrice = 2620.00, previousClosePrice = 2595.00, isFollowed = false)
+                // --- ETF Mondiali & Settoriali (MSCI All World, S&P 500, Nasdaq, ecc.) ---
+                StockEntity(
+                    symbol = "VWCE",
+                    name = "Vanguard FTSE All-World UCITS ETF",
+                    currentPrice = 124.80,
+                    previousClosePrice = 123.90,
+                    assetType = StockEntity.TYPE_ETF,
+                    isFollowed = true
+                ),
+                StockEntity(
+                    symbol = "SWDA",
+                    name = "iShares Core MSCI World UCITS ETF",
+                    currentPrice = 98.40,
+                    previousClosePrice = 97.60,
+                    assetType = StockEntity.TYPE_ETF,
+                    isFollowed = true
+                ),
+                StockEntity(
+                    symbol = "ACWI",
+                    name = "iShares MSCI ACWI ETF",
+                    currentPrice = 115.60,
+                    previousClosePrice = 114.80,
+                    assetType = StockEntity.TYPE_ETF,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "SPY",
+                    name = "SPDR S&P 500 ETF Trust",
+                    currentPrice = 581.30,
+                    previousClosePrice = 579.50,
+                    assetType = StockEntity.TYPE_ETF,
+                    isFollowed = true
+                ),
+                StockEntity(
+                    symbol = "VUAA",
+                    name = "Vanguard S&P 500 UCITS ETF (Acc)",
+                    currentPrice = 103.50,
+                    previousClosePrice = 102.80,
+                    assetType = StockEntity.TYPE_ETF,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "QQQ",
+                    name = "Invesco QQQ Trust (Nasdaq 100)",
+                    currentPrice = 492.20,
+                    previousClosePrice = 488.60,
+                    assetType = StockEntity.TYPE_ETF,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "EIMI",
+                    name = "iShares Core MSCI Emerging Markets",
+                    currentPrice = 32.70,
+                    previousClosePrice = 32.40,
+                    assetType = StockEntity.TYPE_ETF,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "AGGH",
+                    name = "iShares Global Aggregate Bond ETF",
+                    currentPrice = 4.85,
+                    previousClosePrice = 4.84,
+                    assetType = StockEntity.TYPE_ETF,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "SGLD",
+                    name = "Invesco Physical Gold ETC",
+                    currentPrice = 215.40,
+                    previousClosePrice = 213.90,
+                    assetType = StockEntity.TYPE_COMMODITY,
+                    isFollowed = false
+                ),
+
+                // --- Indici di Borsa Mondiali ---
+                StockEntity(
+                    symbol = "^GSPC",
+                    name = "S&P 500 Index",
+                    currentPrice = 5864.00,
+                    previousClosePrice = 5845.00,
+                    assetType = StockEntity.TYPE_INDEX,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "^IXIC",
+                    name = "Nasdaq Composite",
+                    currentPrice = 18518.00,
+                    previousClosePrice = 18420.00,
+                    assetType = StockEntity.TYPE_INDEX,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "^DJI",
+                    name = "Dow Jones Industrial Average",
+                    currentPrice = 42930.00,
+                    previousClosePrice = 42810.00,
+                    assetType = StockEntity.TYPE_INDEX,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "^FTSEMIB",
+                    name = "FTSE MIB (Borsa Italiana)",
+                    currentPrice = 34820.00,
+                    previousClosePrice = 34650.00,
+                    assetType = StockEntity.TYPE_INDEX,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "^STOXX50E",
+                    name = "EURO STOXX 50 Index",
+                    currentPrice = 4940.00,
+                    previousClosePrice = 4920.00,
+                    assetType = StockEntity.TYPE_INDEX,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "^DAX",
+                    name = "DAX 40 (Germania)",
+                    currentPrice = 19460.00,
+                    previousClosePrice = 19380.00,
+                    assetType = StockEntity.TYPE_INDEX,
+                    isFollowed = false
+                ),
+
+                // --- Azioni Singole ---
+                StockEntity(
+                    symbol = "AAPL",
+                    name = "Apple Inc.",
+                    currentPrice = 232.50,
+                    previousClosePrice = 230.10,
+                    assetType = StockEntity.TYPE_STOCK,
+                    isFollowed = true
+                ),
+                StockEntity(
+                    symbol = "NVDA",
+                    name = "NVIDIA Corporation",
+                    currentPrice = 141.20,
+                    previousClosePrice = 138.80,
+                    assetType = StockEntity.TYPE_STOCK,
+                    isFollowed = true
+                ),
+                StockEntity(
+                    symbol = "TSLA",
+                    name = "Tesla, Inc.",
+                    currentPrice = 218.40,
+                    previousClosePrice = 213.90,
+                    assetType = StockEntity.TYPE_STOCK,
+                    isFollowed = true
+                ),
+                StockEntity(
+                    symbol = "MSFT",
+                    name = "Microsoft Corporation",
+                    currentPrice = 428.10,
+                    previousClosePrice = 425.30,
+                    assetType = StockEntity.TYPE_STOCK,
+                    isFollowed = true
+                ),
+                StockEntity(
+                    symbol = "AMZN",
+                    name = "Amazon.com, Inc.",
+                    currentPrice = 186.70,
+                    previousClosePrice = 185.20,
+                    assetType = StockEntity.TYPE_STOCK,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "GOOGL",
+                    name = "Alphabet Inc.",
+                    currentPrice = 165.90,
+                    previousClosePrice = 164.50,
+                    assetType = StockEntity.TYPE_STOCK,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "META",
+                    name = "Meta Platforms, Inc.",
+                    currentPrice = 582.40,
+                    previousClosePrice = 576.80,
+                    assetType = StockEntity.TYPE_STOCK,
+                    isFollowed = false
+                ),
+
+                // --- Crypto Assets ---
+                StockEntity(
+                    symbol = "BTCUSDT",
+                    name = "Bitcoin",
+                    currentPrice = 67450.00,
+                    previousClosePrice = 66800.00,
+                    assetType = StockEntity.TYPE_CRYPTO,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "ETHUSDT",
+                    name = "Ethereum",
+                    currentPrice = 2620.00,
+                    previousClosePrice = 2595.00,
+                    assetType = StockEntity.TYPE_CRYPTO,
+                    isFollowed = false
+                ),
+                StockEntity(
+                    symbol = "SOLUSDT",
+                    name = "Solana",
+                    currentPrice = 165.00,
+                    previousClosePrice = 162.00,
+                    assetType = StockEntity.TYPE_CRYPTO,
+                    isFollowed = false
+                )
             )
-            investmentDao.insertStocks(defaultStocks)
+            investmentDao.insertStocksIgnore(defaultStocks)
         }
 
         suspend fun seedDatabase(database: ExpenseDatabase) {

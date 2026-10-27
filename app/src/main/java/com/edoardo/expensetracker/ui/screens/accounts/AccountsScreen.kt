@@ -261,7 +261,7 @@ fun AccountsScreen(
                     }
                 }
 
-                if (state.regularAccounts.isEmpty() && state.savingsAccounts.isEmpty()) {
+                if (state.regularAccounts.isEmpty() && state.savingsAccounts.isEmpty() && state.investmentAccounts.isEmpty()) {
                     item {
                         Surface(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -313,6 +313,39 @@ fun AccountsScreen(
                     }
 
                     items(state.savingsAccounts) { accWithBal ->
+                        Account1MoneyRow(
+                            accountWithBal = accWithBal,
+                            onClick = { selectedAccountForAction = accWithBal }
+                        )
+                    }
+                }
+
+                // --- Categoria Investimenti (Sotto Risparmi) ---
+                if (state.investmentAccounts.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Investimenti",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            val invColor = if (state.investmentsSubtotal < 0) ExpenseRed else PrimaryMint
+                            Text(
+                                text = "€ ${String.format(Locale.ITALY, "%,.2f", state.investmentsSubtotal)}",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = invColor
+                            )
+                        }
+                    }
+
+                    items(state.investmentAccounts) { accWithBal ->
                         Account1MoneyRow(
                             accountWithBal = accWithBal,
                             onClick = { selectedAccountForAction = accWithBal }

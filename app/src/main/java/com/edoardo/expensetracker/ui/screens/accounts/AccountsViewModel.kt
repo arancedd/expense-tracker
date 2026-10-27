@@ -22,6 +22,8 @@ data class AccountsUiState(
     val regularSubtotal: Double = 0.0,
     val savingsAccounts: List<AccountWithBalance> = emptyList(),
     val savingsSubtotal: Double = 0.0,
+    val investmentAccounts: List<AccountWithBalance> = emptyList(),
+    val investmentsSubtotal: Double = 0.0,
     val debtAccounts: List<AccountWithBalance> = emptyList(),
     val archivedAccounts: List<AccountWithBalance> = emptyList(),
     val isAddAccountDialogOpen: Boolean = false,
@@ -61,14 +63,19 @@ class AccountsViewModel @Inject constructor(
         }
         val savingsSubtotal = savings.sumOf { it.currentBalance }
 
+        val investments = activeAccounts.filter {
+            it.account.accountType == AccountType.INVESTMENT
+        }
+        val investmentsSubtotal = investments.sumOf { it.currentBalance }
+
         val debts = activeAccounts.filter {
             it.account.accountType == AccountType.DEBT
         }
         val debtsTotal = debts.sumOf { it.currentBalance }
         val debtsCount = debts.size
 
-        val accountsCount = regular.size + savings.size
-        val accountsTotal = regularSubtotal + savingsSubtotal
+        val accountsCount = regular.size + savings.size + investments.size
+        val accountsTotal = regularSubtotal + savingsSubtotal + investmentsSubtotal
 
         val archived = allAccounts.filter { !it.account.isActive }
 
@@ -83,6 +90,8 @@ class AccountsViewModel @Inject constructor(
             regularSubtotal = regularSubtotal,
             savingsAccounts = savings,
             savingsSubtotal = savingsSubtotal,
+            investmentAccounts = investments,
+            investmentsSubtotal = investmentsSubtotal,
             debtAccounts = debts,
             archivedAccounts = archived,
             isAddAccountDialogOpen = dialog.first,

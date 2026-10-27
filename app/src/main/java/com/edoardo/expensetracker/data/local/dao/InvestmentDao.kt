@@ -46,6 +46,9 @@ interface InvestmentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStocks(stocks: List<StockEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertStocksIgnore(stocks: List<StockEntity>)
+
     @Update
     suspend fun updateStock(stock: StockEntity)
 

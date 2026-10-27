@@ -169,13 +169,14 @@ class InvestmentsViewModel @Inject constructor(
         }
     }
 
-    fun addNewStock(symbol: String, name: String, price: Double) {
+    fun addNewStock(symbol: String, name: String, price: Double, assetType: String = StockEntity.TYPE_STOCK) {
         viewModelScope.launch {
             val stock = StockEntity(
                 symbol = symbol.uppercase().trim(),
                 name = name.trim().ifEmpty { symbol.uppercase().trim() },
                 currentPrice = price,
                 previousClosePrice = price,
+                assetType = assetType,
                 isFollowed = true
             )
             repository.insertStock(stock)

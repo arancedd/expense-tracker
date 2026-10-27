@@ -4,9 +4,11 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -33,19 +35,30 @@ fun FollowStockSheet(
     allStocks: List<StockEntity>,
     onDismiss: () -> Unit,
     onToggleFollow: (symbol: String, isFollowed: Boolean) -> Unit,
-    onAddNewStock: (symbol: String, name: String, price: Double) -> Unit
+    onAddNewStock: (symbol: String, name: String, price: Double, assetType: String) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf("ALL") } // "ALL", "ETF", "INDEX", "STOCK", "CRYPTO"
     var showCustomStockDialog by remember { mutableStateOf(false) }
 
-    val filteredStocks = remember(searchQuery, allStocks) {
-        if (searchQuery.isBlank()) {
-            allStocks
-        } else {
-            val q = searchQuery.trim().lowercase()
-            allStocks.filter {
-                it.symbol.lowercase().contains(q) || it.name.lowercase().contains(q)
+    val filterOptions = listOf(
+        "ALL" to "Tutti",
+        StockEntity.TYPE_ETF to "ETF",
+        StockEntity.TYPE_INDEX to "Indici",
+        StockEntity.TYPE_STOCK to "Azioni",
+        StockEntity.TYPE_CRYPTO to "Crypto"
+    )
+
+    val filteredStocks = remember(searchQuery, selectedFilter, allStocks) {
+        val q = searchQuery.trim().lowercase()
+        allStocks.filter { stock ->
+            val matchesFilter = when (selectedFilter) {
+                "ALL" -> true
+                StockEntity.TYPE_ETF -> stock.assetType == StockEntity.TYPE_ETF || stock.assetType == StockEntity.TYPE_COMMODITY
+                else -> stock.assetType == selectedFilter
             }
+            val matchesSearch = q.isBlank() || stock.symbol.lowercase().contains(q) || stock.name.lowercase().contains(q)
+            matchesFilter && matchesSearch
         }
     }
 
@@ -79,13 +92,13 @@ fun FollowStockSheet(
             ) {
                 Column {
                     Text(
-                        text = "Segui Stock",
+                        text = "Segui Titoli & ETF",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
                     Text(
-                        text = "Seleziona i titoli da monitorare nella tua watchlist",
+                        text = "Seleziona ETF, indici, azioni o crypto da monitorare",
                         fontSize = 12.sp,
                         color = TextSecondary
                     )
@@ -142,7 +155,7 @@ fun FollowStockSheet(
                         decorationBox = { innerTextField ->
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    text = "Cerca per ticker o nome (es. AAPL, Tesla, NVDA)...",
+                                    text = "Cerca (es. MSCI, VWCE, S&P 500, Apple)...",
                                     fontSize = 13.sp,
                                     color = TextMuted
                                 )
@@ -164,9 +177,46 @@ fun FollowStockSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Lista Stock
+            // Filter Chips (Tutti, ETF, Indici, Azioni, Crypto)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                filterOptions.forEach { (typeKey, label) ->
+                    val isSelected = selectedFilter == typeKey
+                    val chipColor = when (typeKey) {
+                        StockEntity.TYPE_ETF -> Color(0xFF0EA5E9)
+                        StockEntity.TYPE_INDEX -> Color(0xFF8B5CF6)
+                        StockEntity.TYPE_CRYPTO -> Color(0xFFF59E0B)
+                        else -> PrimaryMint
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { selectedFilter = typeKey },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) chipColor.copy(alpha = 0.22f) else SurfaceElevated,
+                        border = BorderStroke(1.dp, if (isSelected) chipColor else SurfaceBorder)
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) chipColor else TextSecondary,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Lista Assets
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -198,6 +248,8 @@ fun FollowStockSheet(
                                         fontWeight = FontWeight.Bold,
                                         color = TextPrimary
                                     )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    AssetTypeBadge(assetType = stock.assetType)
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = "€ ${String.format(Locale.ITALY, "%,.2f", stock.currentPrice)}",
@@ -261,10 +313,35 @@ fun FollowStockSheet(
         CustomStockDialog(
             initialSymbol = searchQuery.trim().uppercase(),
             onDismiss = { showCustomStockDialog = false },
-            onConfirm = { sym, name, price ->
-                onAddNewStock(sym, name, price)
+            onConfirm = { sym, name, price, assetType ->
+                onAddNewStock(sym, name, price, assetType)
                 showCustomStockDialog = false
             }
+        )
+    }
+}
+
+@Composable
+fun AssetTypeBadge(assetType: String) {
+    val (label, bg, fg) = when (assetType) {
+        StockEntity.TYPE_ETF -> Triple("ETF", Color(0xFF0EA5E9).copy(alpha = 0.18f), Color(0xFF38BDF8))
+        StockEntity.TYPE_INDEX -> Triple("INDICE", Color(0xFF8B5CF6).copy(alpha = 0.18f), Color(0xFFA78BFA))
+        StockEntity.TYPE_CRYPTO -> Triple("CRYPTO", Color(0xFFF59E0B).copy(alpha = 0.18f), Color(0xFFFBBF24))
+        StockEntity.TYPE_COMMODITY -> Triple("COMMODITY", Color(0xFFEC4899).copy(alpha = 0.18f), Color(0xFFF472B6))
+        else -> Triple("AZIONE", PrimaryMint.copy(alpha = 0.15f), PrimaryMint)
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(bg)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = fg
         )
     }
 }
@@ -273,30 +350,67 @@ fun FollowStockSheet(
 private fun CustomStockDialog(
     initialSymbol: String,
     onDismiss: () -> Unit,
-    onConfirm: (symbol: String, name: String, price: Double) -> Unit
+    onConfirm: (symbol: String, name: String, price: Double, assetType: String) -> Unit
 ) {
     var symbol by remember { mutableStateOf(initialSymbol) }
     var name by remember { mutableStateOf("") }
     var priceStr by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf(StockEntity.TYPE_ETF) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceElevated,
         title = {
-            Text("Aggiungi Ticker Personalizzato", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text("Aggiungi Asset Personalizzato", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Tipo di asset
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        StockEntity.TYPE_ETF to "ETF",
+                        StockEntity.TYPE_INDEX to "Indice",
+                        StockEntity.TYPE_STOCK to "Azione",
+                        StockEntity.TYPE_CRYPTO to "Crypto"
+                    ).forEach { (typeKey, label) ->
+                        val isSelected = selectedType == typeKey
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { selectedType = typeKey },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) PrimaryMint.copy(alpha = 0.22f) else SurfaceBorder,
+                            border = BorderStroke(1.dp, if (isSelected) PrimaryMint else Color.Transparent)
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) PrimaryMint else TextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = symbol,
                     onValueChange = { symbol = it.uppercase() },
-                    label = { Text("Simbolo Ticker (es. ENI, ISP, PLTR)") },
+                    label = { Text("Simbolo Ticker (es. VWCE, SWDA, ENI)") },
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nome Società") },
+                    label = { Text("Nome Asset o Fondo") },
                     singleLine = true
                 )
                 OutlinedTextField(
@@ -312,7 +426,7 @@ private fun CustomStockDialog(
                 onClick = {
                     val p = priceStr.toDoubleOrNull() ?: 10.0
                     if (symbol.isNotBlank()) {
-                        onConfirm(symbol, name, p)
+                        onConfirm(symbol, name, p, selectedType)
                     }
                 }
             ) {

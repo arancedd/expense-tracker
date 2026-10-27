@@ -142,11 +142,12 @@ class StockPriceService @Inject constructor(
                 continue
             }
 
-            // Simula fluttuazione reale al minuto (tra -0.35% e +0.40%)
+            // Simula fluttuazione reale al minuto coerente con la tipologia di strumento
             val volatility = when {
-                stock.symbol.contains("BTC") || stock.symbol.contains("ETH") -> 0.006
-                stock.symbol in listOf("NVDA", "TSLA") -> 0.004
-                else -> 0.0025
+                stock.assetType == com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_CRYPTO || stock.symbol.contains("BTC") || stock.symbol.contains("ETH") -> 0.0055
+                stock.symbol in listOf("NVDA", "TSLA") -> 0.0035
+                stock.assetType in listOf(com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_INDEX, com.edoardo.expensetracker.data.local.entity.StockEntity.TYPE_ETF) -> 0.0012
+                else -> 0.0022
             }
             val changePercent = (Random.nextDouble(-volatility, volatility * 1.05))
             val newPrice = (stock.currentPrice * (1.0 + changePercent)).coerceAtLeast(0.01)

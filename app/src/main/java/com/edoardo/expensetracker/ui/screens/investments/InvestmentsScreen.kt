@@ -94,8 +94,8 @@ fun InvestmentsScreen(
                 onToggleFollow = { sym, followed ->
                     viewModel.toggleFollowStock(sym, followed)
                 },
-                onAddNewStock = { sym, name, price ->
-                    viewModel.addNewStock(sym, name, price)
+                onAddNewStock = { sym, name, price, assetType ->
+                    viewModel.addNewStock(sym, name, price, assetType)
                 }
             )
         }
@@ -474,6 +474,8 @@ private fun StockRowCard(
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    AssetTypeBadge(assetType = stock.assetType)
                     if (item.sharesOwned > 0) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
